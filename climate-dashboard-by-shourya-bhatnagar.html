@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earth Systems Observatory — Climate Dashboard | by Shourya Bhatnagar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --abyss:#0B1D26;
+    --panel:#11293A;
+    --panel-2:#0E2230;
+    --line: rgba(232,237,233,0.10);
+    --ink:#E8EDE9;
+    --ink-dim:#9FB3B8;
+    --coral:#FF6B4A;
+    --teal:#4ECDC4;
+    --amber:#F4C95D;
+    --stripe-cold:#1B4F72;
+    --stripe-hot:#C0392B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--abyss);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif; margin:0;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 28px;}
+
+  /* ---------- Header ---------- */
+  header{padding:36px 0 0 0;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--teal); display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{content:''; width:8px;height:8px;border-radius:50%;background:var(--teal); box-shadow:0 0 8px var(--teal); display:inline-block;}
+  h1.title{font-size:44px; font-weight:600; line-height:1.08; margin-top:14px; max-width:760px;}
+  .subtitle{color:var(--ink-dim); font-size:16px; max-width:600px; margin-top:14px; line-height:1.55;}
+
+  /* ---------- Warming stripes signature ---------- */
+  .stripes-wrap{margin-top:32px; border:1px solid var(--line); border-radius:4px; overflow:hidden; position:relative;}
+  #stripes{display:block; width:100%; height:64px;}
+  .stripes-caption{
+    display:flex; justify-content:space-between; padding:8px 14px;
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);
+    background:var(--panel-2); border-top:1px solid var(--line);
+  }
+
+  /* ---------- KPI row ---------- */
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-top:28px; background:var(--line); border:1px solid var(--line); border-radius:4px; overflow:hidden;}
+  .kpi{background:var(--panel); padding:20px 22px;}
+  .kpi-label{font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim);}
+  .kpi-value{font-family:'JetBrains Mono',monospace; font-size:30px; font-weight:600; margin-top:8px; line-height:1;}
+  .kpi-value.coral{color:var(--coral);}
+  .kpi-value.teal{color:var(--teal);}
+  .kpi-value.amber{color:var(--amber);}
+  .kpi-note{font-size:12px; color:var(--ink-dim); margin-top:8px;}
+
+  /* ---------- Filter bar ---------- */
+  .filter-bar{
+    display:flex; align-items:center; gap:28px; flex-wrap:wrap;
+    margin-top:34px; padding:16px 20px; background:var(--panel);
+    border:1px solid var(--line); border-radius:4px;
+  }
+  .filter-group{display:flex; align-items:center; gap:10px;}
+  .filter-label{font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); white-space:nowrap;}
+  select, input[type=range]{accent-color:var(--coral);}
+  select{
+    background:var(--panel-2); color:var(--ink); border:1px solid var(--line);
+    border-radius:3px; padding:6px 10px; font-family:'Inter',sans-serif; font-size:13px;
+  }
+  #yearRange{width:200px;}
+  #yearRangeLabel{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber); min-width:90px;}
+
+  /* ---------- Section headers ---------- */
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; margin-top:46px; margin-bottom:14px;}
+  .section-head h2{font-size:20px; font-weight:600;}
+  .section-num{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-dim);}
+
+  /* ---------- Grid / panels ---------- */
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:18px 18px 8px 18px;}
+  .panel-title{font-size:13px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;}
+  .chart{width:100%; height:340px;}
+  .chart-tall{width:100%; height:420px;}
+
+  /* ---------- Insights ---------- */
+  .findings{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:6px;}
+  .finding{background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:18px;}
+  .finding .num{font-family:'JetBrains Mono',monospace; color:var(--coral); font-size:13px;}
+  .finding p{font-size:14px; line-height:1.5; margin:10px 0 0 0; color:var(--ink);}
+
+  footer{margin-top:60px; padding:26px 0 40px 0; border-top:1px solid var(--line); color:var(--ink-dim); font-size:12.5px; line-height:1.7;}
+  footer a{color:var(--teal);}
+
+  @media (max-width:900px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .grid-2{grid-template-columns:1fr;}
+    .findings{grid-template-columns:repeat(2,1fr);}
+    h1.title{font-size:32px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Earth Systems Observatory — Live Dashboard</div>
+    <h1 class="title">Reading the planet's vital signs, one dataset at a time.</h1>
+    <p class="subtitle">An interactive analysis of CO₂ emissions, global temperature anomalies, and sea-level rise across 20 countries and 140+ years of climate records.</p>
+    <p style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-dim); margin-top:10px; letter-spacing:0.03em;">Made by <span style="color:var(--amber)">Shourya Bhatnagar</span></p>
+
+    <div class="stripes-wrap">
+      <canvas id="stripes"></canvas>
+      <div class="stripes-caption">
+        <span>1880</span>
+        <span>WARMING STRIPES — GLOBAL TEMPERATURE ANOMALY, 1880–2023</span>
+        <span>2023</span>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">2023 Temp. Anomaly</div>
+        <div class="kpi-value coral" id="kpiTemp">—</div>
+        <div class="kpi-note">vs. 1951–1980 baseline</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Global CO₂, Top 20</div>
+        <div class="kpi-value teal" id="kpiCO2">—</div>
+        <div class="kpi-note">million tonnes, 2023</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Sea-level Rise</div>
+        <div class="kpi-value amber" id="kpiSea">—</div>
+        <div class="kpi-note">cumulative since 1993</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Fastest-Warming Decade</div>
+        <div class="kpi-value" id="kpiDecade" style="color:var(--ink)">—</div>
+        <div class="kpi-note">by mean anomaly change</div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-label">Country</span>
+        <select id="countrySelect"></select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">CO₂ Year range</span>
+        <input type="range" id="yearRange" min="1990" max="2023" value="1990" step="1">
+        <span id="yearRangeLabel" class="mono">1990 – 2023</span>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Map metric</span>
+        <select id="mapMetric">
+          <option value="total">Total CO₂ (Mt)</option>
+          <option value="growth">% Change since 1990</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-head"><h2>Temperature &amp; Sea Level</h2><span class="section-num">01 / 04</span></div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">Global Temperature Anomaly (°C)</div>
+        <div class="chart" id="tempChart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Cumulative Sea-Level Rise (mm, satellite era)</div>
+        <div class="chart" id="seaChart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>CO₂ Emissions by Country</h2><span class="section-num">02 / 04</span></div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">Emissions Trend — Selected Country vs. Top 5</div>
+        <div class="chart" id="co2Chart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Top Emitters, 2023 (Mt CO₂)</div>
+        <div class="chart" id="rankChart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Geographic Distribution</h2><span class="section-num">03 / 04</span></div>
+    <div class="panel">
+      <div class="panel-title">CO₂ Emissions by Country — World Map</div>
+      <div class="chart-tall" id="mapChart"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Key Findings</h2><span class="section-num">04 / 04</span></div>
+    <div class="findings">
+      <div class="finding"><div class="num">01</div><p>China and the United States together account for more than half of top-20 CO₂ emissions in 2023, though their trajectories diverge sharply — China's output has risen over 5× since 1990, while the U.S. has stayed roughly flat.</p></div>
+      <div class="finding"><div class="num">02</div><p>The last decade (2014–2023) holds nine of the ten warmest years on record in this dataset, consistent with an accelerating warming trend since the 1980s.</p></div>
+      <div class="finding"><div class="num">03</div><p>Sea level has risen at a non-constant rate — the annual pace in the most recent decade is noticeably higher than in the 1990s, pointing to acceleration rather than a steady linear trend.</p></div>
+      <div class="finding"><div class="num">04</div><p>Several European economies (Germany, UK, France, Italy) show sustained emissions declines since 1990, while emerging economies (India, Indonesia, Iran, Turkey) show the steepest growth — a regional decoupling pattern.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    Data is compiled and approximated for demonstration purposes from patterns consistent with public sources — NASA GISS (temperature), NOAA (sea level), and Our World in Data / Global Carbon Project (CO₂ emissions). Figures are illustrative rather than exact real-time values. Built with Pandas/NumPy-style preprocessing and Plotly.js.
+    <br><br>
+    © 2026 Shourya Bhatnagar — Earth Systems Observatory
+  </footer>
+
+</div>
+
+<script>
+const CLIMATE_DATA = {"temp": [[1880, -0.114], [1881, -0.25], [1882, -0.193], [1883, -0.203], [1884, -0.088], [1885, -0.1], [1886, -0.05], [1887, -0.229], [1888, -0.153], [1889, -0.24], [1890, -0.197], [1891, -0.131], [1892, -0.236], [1893, -0.198], [1894, -0.095], [1895, -0.117], [1896, -0.189], [1897, -0.106], [1898, -0.055], [1899, -0.234], [1900, -0.054], [1901, -0.076], [1902, -0.156], [1903, -0.195], [1904, -0.016], [1905, -0.153], [1906, -0.207], [1907, -0.204], [1908, -0.035], [1909, -0.089], [1910, -0.043], [1911, -0.059], [1912, -0.101], [1913, -0.002], [1914, -0.133], [1915, -0.094], [1916, -0.03], [1917, -0.076], [1918, -0.022], [1919, -0.084], [1920, -0.054], [1921, -0.2], [1922, -0.158], [1923, -0.143], [1924, -0.189], [1925, -0.155], [1926, -0.182], [1927, -0.142], [1928, -0.06], [1929, -0.12], [1930, -0.117], [1931, -0.152], [1932, -0.138], [1933, 0.012], [1934, -0.052], [1935, -0.059], [1936, -0.156], [1937, -0.029], [1938, -0.155], [1939, -0.106], [1940, 0.032], [1941, -0.045], [1942, -0.063], [1943, -0.033], [1944, 0.003], [1945, -0.011], [1946, -0.131], [1947, -0.174], [1948, -0.11], [1949, -0.12], [1950, -0.131], [1951, 0.034], [1952, 0.02], [1953, -0.105], [1954, -0.027], [1955, -0.084], [1956, 0.033], [1957, -0.068], [1958, -0.11], [1959, -0.114], [1960, -0.042], [1961, -0.107], [1962, -0.034], [1963, 0.036], [1964, -0.074], [1965, -0.112], [1966, 0.063], [1967, -0.045], [1968, -0.137], [1969, -0.146], [1970, -0.131], [1971, -0.014], [1972, 0.023], [1973, -0.058], [1974, -0.137], [1975, -0.065], [1976, 0.096], [1977, 0.015], [1978, 0.137], [1979, 0.136], [1980, -0.03], [1981, 0.152], [1982, 0.167], [1983, 0.157], [1984, 0.121], [1985, 0.227], [1986, 0.132], [1987, 0.229], [1988, 0.256], [1989, 0.391], [1990, 0.397], [1991, 0.283], [1992, 0.36], [1993, 0.312], [1994, 0.499], [1995, 0.513], [1996, 0.409], [1997, 0.508], [1998, 0.525], [1999, 0.447], [2000, 0.606], [2001, 0.58], [2002, 0.657], [2003, 0.624], [2004, 0.53], [2005, 0.626], [2006, 0.581], [2007, 0.808], [2008, 0.819], [2009, 0.833], [2010, 0.738], [2011, 0.706], [2012, 0.913], [2013, 0.952], [2014, 0.783], [2015, 0.896], [2016, 0.826], [2017, 1.004], [2018, 1.029], [2019, 0.91], [2020, 1.011], [2021, 1.051], [2022, 1.011], [2023, 1.17]], "sea": [[1993, 2.9], [1994, 5.7], [1995, 8.8], [1996, 12.2], [1997, 15.1], [1998, 18.0], [1999, 21.9], [2000, 25.3], [2001, 28.6], [2002, 31.9], [2003, 34.9], [2004, 38.0], [2005, 41.2], [2006, 44.8], [2007, 48.0], [2008, 51.2], [2009, 54.3], [2010, 58.1], [2011, 61.5], [2012, 65.6], [2013, 69.8], [2014, 73.1], [2015, 76.6], [2016, 80.6], [2017, 84.1], [2018, 87.6], [2019, 92.1], [2020, 96.1], [2021, 100.1], [2022, 104.5], [2023, 109.0]], "co2_series": {"China": {"iso3": "CHN", "data": [[1990, 2419.7], [1991, 4631.0], [1992, 5475.4], [1993, 6051.1], [1994, 6537.7], [1995, 7022.6], [1996, 7377.3], [1997, 7809.1], [1998, 7840.7], [1999, 8223.2], [2000, 8469.6], [2001, 8905.5], [2002, 8929.1], [2003, 9135.3], [2004, 9450.6], [2005, 9651.2], [2006, 9797.4], [2007, 9980.4], [2008, 10445.1], [2009, 10431.4], [2010, 10787.4], [2011, 10828.9], [2012, 10778.7], [2013, 11363.1], [2014, 11453.0], [2015, 11672.8], [2016, 11809.0], [2017, 11924.9], [2018, 11748.7], [2019, 12044.5], [2020, 12052.8], [2021, 12282.0], [2022, 12246.5], [2023, 12539.0]]}, "United States": {"iso3": "USA", "data": [[1990, 4893.2], [1991, 4754.9], [1992, 4854.5], [1993, 4791.4], [1994, 4785.2], [1995, 4887.8], [1996, 4895.1], [1997, 4810.7], [1998, 4841.9], [1999, 4733.7], [2000, 4761.0], [2001, 4890.0], [2002, 4815.2], [2003, 4808.1], [2004, 4847.6], [2005, 4715.0], [2006, 4816.2], [2007, 4800.5], [2008, 4867.7], [2009, 4734.2], [2010, 4888.5], [2011, 4719.4], [2012, 4739.7], [2013, 4818.2], [2014, 4833.6], [2015, 4749.2], [2016, 4727.0], [2017, 4874.9], [2018, 4751.3], [2019, 4818.1], [2020, 4822.9], [2021, 4784.5], [2022, 4816.1], [2023, 4804.4]]}, "India": {"iso3": "IND", "data": [[1990, 600.3], [1991, 883.4], [1992, 1053.5], [1993, 1152.7], [1994, 1264.0], [1995, 1372.5], [1996, 1437.8], [1997, 1518.5], [1998, 1621.6], [1999, 1648.6], [2000, 1742.9], [2001, 1847.6], [2002, 1911.9], [2003, 1902.7], [2004, 1972.0], [2005, 2032.9], [2006, 2144.5], [2007, 2195.2], [2008, 2248.9], [2009, 2255.2], [2010, 2286.0], [2011, 2398.9], [2012, 2435.6], [2013, 2474.6], [2014, 2559.3], [2015, 2572.2], [2016, 2550.5], [2017, 2679.8], [2018, 2668.4], [2019, 2751.1], [2020, 2824.5], [2021, 2776.5], [2022, 2815.2], [2023, 2854.4]]}, "Russia": {"iso3": "RUS", "data": [[1990, 2164.6], [1991, 2131.7], [1992, 2151.8], [1993, 2153.2], [1994, 2101.2], [1995, 2129.7], [1996, 2090.3], [1997, 2101.3], [1998, 2128.2], [1999, 2115.2], [2000, 2044.4], [2001, 2064.1], [2002, 2044.1], [2003, 2013.9], [2004, 2069.0], [2005, 2050.2], [2006, 2011.8], [2007, 2042.9], [2008, 2019.7], [2009, 2002.0], [2010, 1960.8], [2011, 1958.4], [2012, 2015.0], [2013, 2008.8], [2014, 1972.7], [2015, 1987.6], [2016, 1960.1], [2017, 1918.6], [2018, 1909.4], [2019, 1915.8], [2020, 1953.6], [2021, 1938.0], [2022, 1935.2], [2023, 1930.3]]}, "Japan": {"iso3": "JPN", "data": [[1990, 1037.8], [1991, 1038.1], [1992, 1030.5], [1993, 1057.3], [1994, 1060.2], [1995, 1038.7], [1996, 1046.2], [1997, 1025.3], [1998, 1056.0], [1999, 1051.7], [2000, 1054.8], [2001, 1046.5], [2002, 1047.8], [2003, 1011.0], [2004, 1038.8], [2005, 1020.6], [2006, 1043.7], [2007, 1036.9], [2008, 1037.9], [2009, 1034.1], [2010, 1010.4], [2011, 1030.1], [2012, 1000.9], [2013, 1030.5], [2014, 1028.4], [2015, 1001.0], [2016, 1023.5], [2017, 1007.6], [2018, 999.8], [2019, 1018.0], [2020, 993.7], [2021, 984.0], [2022, 989.2], [2023, 993.1]]}, "Germany": {"iso3": "DEU", "data": [[1990, 963.8], [1991, 962.6], [1992, 930.4], [1993, 937.0], [1994, 920.6], [1995, 934.2], [1996, 909.8], [1997, 916.1], [1998, 878.0], [1999, 899.7], [2000, 863.0], [2001, 881.2], [2002, 848.0], [2003, 833.5], [2004, 835.1], [2005, 835.3], [2006, 812.0], [2007, 811.7], [2008, 798.8], [2009, 784.8], [2010, 780.7], [2011, 760.6], [2012, 764.2], [2013, 732.6], [2014, 749.7], [2015, 727.7], [2016, 722.3], [2017, 712.2], [2018, 699.4], [2019, 680.1], [2020, 661.4], [2021, 666.4], [2022, 646.6], [2023, 635.2]]}, "Iran": {"iso3": "IRN", "data": [[1990, 172.4], [1991, 237.2], [1992, 269.3], [1993, 299.2], [1994, 326.8], [1995, 350.9], [1996, 371.8], [1997, 390.2], [1998, 415.0], [1999, 443.3], [2000, 457.3], [2001, 479.6], [2002, 491.5], [2003, 502.0], [2004, 523.4], [2005, 527.5], [2006, 549.1], [2007, 567.4], [2008, 585.7], [2009, 602.1], [2010, 611.9], [2011, 625.3], [2012, 633.2], [2013, 653.5], [2014, 678.2], [2015, 688.8], [2016, 684.5], [2017, 694.7], [2018, 719.6], [2019, 735.5], [2020, 739.0], [2021, 765.7], [2022, 775.8], [2023, 785.4]]}, "South Korea": {"iso3": "KOR", "data": [[1990, 227.5], [1991, 257.2], [1992, 275.1], [1993, 294.7], [1994, 313.3], [1995, 332.9], [1996, 336.5], [1997, 354.5], [1998, 370.5], [1999, 376.4], [2000, 396.2], [2001, 404.8], [2002, 412.1], [2003, 430.2], [2004, 429.9], [2005, 453.8], [2006, 464.9], [2007, 462.9], [2008, 479.1], [2009, 484.3], [2010, 509.8], [2011, 510.8], [2012, 510.7], [2013, 524.3], [2014, 546.6], [2015, 547.5], [2016, 564.4], [2017, 570.7], [2018, 587.2], [2019, 587.1], [2020, 604.5], [2021, 612.0], [2022, 614.1], [2023, 625.4]]}, "Saudi Arabia": {"iso3": "SAU", "data": [[1990, 150.0], [1991, 196.8], [1992, 220.7], [1993, 246.1], [1994, 264.4], [1995, 279.6], [1996, 293.9], [1997, 309.6], [1998, 329.8], [1999, 346.3], [2000, 357.0], [2001, 372.2], [2002, 380.1], [2003, 389.7], [2004, 405.5], [2005, 417.4], [2006, 430.1], [2007, 445.7], [2008, 449.9], [2009, 462.7], [2010, 482.6], [2011, 493.9], [2012, 491.8], [2013, 509.3], [2014, 522.5], [2015, 530.1], [2016, 535.7], [2017, 550.4], [2018, 571.2], [2019, 573.8], [2020, 586.1], [2021, 599.6], [2022, 607.0], [2023, 607.1]]}, "Indonesia": {"iso3": "IDN", "data": [[1990, 137.2], [1991, 229.5], [1992, 273.1], [1993, 305.2], [1994, 332.8], [1995, 348.8], [1996, 374.5], [1997, 390.8], [1998, 409.7], [1999, 420.2], [2000, 436.0], [2001, 455.1], [2002, 462.1], [2003, 481.8], [2004, 502.1], [2005, 509.7], [2006, 517.3], [2007, 535.9], [2008, 540.4], [2009, 563.0], [2010, 560.8], [2011, 580.2], [2012, 595.1], [2013, 592.7], [2014, 618.0], [2015, 615.6], [2016, 633.7], [2017, 632.9], [2018, 651.0], [2019, 656.0], [2020, 668.3], [2021, 689.2], [2022, 687.8], [2023, 707.1]]}, "Canada": {"iso3": "CAN", "data": [[1990, 425.6], [1991, 420.6], [1992, 422.1], [1993, 425.3], [1994, 438.6], [1995, 450.9], [1996, 443.5], [1997, 453.0], [1998, 459.4], [1999, 461.1], [2000, 467.0], [2001, 474.7], [2002, 464.6], [2003, 465.1], [2004, 471.4], [2005, 474.7], [2006, 489.1], [2007, 490.9], [2008, 488.0], [2009, 501.3], [2010, 506.5], [2011, 498.3], [2012, 511.0], [2013, 517.7], [2014, 508.4], [2015, 526.8], [2016, 533.6], [2017, 519.4], [2018, 521.3], [2019, 531.1], [2020, 542.7], [2021, 552.5], [2022, 544.0], [2023, 554.7]]}, "Brazil": {"iso3": "BRA", "data": [[1990, 186.8], [1991, 207.5], [1992, 219.2], [1993, 225.5], [1994, 242.2], [1995, 253.1], [1996, 260.2], [1997, 264.4], [1998, 283.0], [1999, 289.7], [2000, 293.4], [2001, 302.9], [2002, 310.5], [2003, 320.5], [2004, 326.5], [2005, 341.4], [2006, 349.1], [2007, 347.0], [2008, 367.0], [2009, 370.1], [2010, 380.6], [2011, 386.5], [2012, 389.8], [2013, 402.0], [2014, 413.2], [2015, 409.2], [2016, 425.5], [2017, 428.2], [2018, 434.4], [2019, 440.7], [2020, 453.1], [2021, 451.8], [2022, 469.5], [2023, 476.2]]}, "United Kingdom": {"iso3": "GBR", "data": [[1990, 580.2], [1991, 595.8], [1992, 576.4], [1993, 576.3], [1994, 574.0], [1995, 562.7], [1996, 548.5], [1997, 560.1], [1998, 538.4], [1999, 532.0], [2000, 537.1], [2001, 519.8], [2002, 523.1], [2003, 511.4], [2004, 494.7], [2005, 481.2], [2006, 491.0], [2007, 465.9], [2008, 469.1], [2009, 455.9], [2010, 451.7], [2011, 441.3], [2012, 431.2], [2013, 419.1], [2014, 414.6], [2015, 393.7], [2016, 386.2], [2017, 383.7], [2018, 368.0], [2019, 362.0], [2020, 350.4], [2021, 341.0], [2022, 329.4], [2023, 323.1]]}, "Mexico": {"iso3": "MEX", "data": [[1990, 258.2], [1991, 270.0], [1992, 271.9], [1993, 277.8], [1994, 282.2], [1995, 288.7], [1996, 293.4], [1997, 303.9], [1998, 312.1], [1999, 310.2], [2000, 315.8], [2001, 324.4], [2002, 332.8], [2003, 341.3], [2004, 340.3], [2005, 341.9], [2006, 344.3], [2007, 350.5], [2008, 355.8], [2009, 359.9], [2010, 362.2], [2011, 374.7], [2012, 375.6], [2013, 391.0], [2014, 389.3], [2015, 396.3], [2016, 391.9], [2017, 408.4], [2018, 407.0], [2019, 417.9], [2020, 417.6], [2021, 420.4], [2022, 424.4], [2023, 424.6]]}, "Australia": {"iso3": "AUS", "data": [[1990, 255.3], [1991, 269.0], [1992, 268.3], [1993, 276.2], [1994, 275.7], [1995, 276.1], [1996, 286.4], [1997, 283.7], [1998, 288.8], [1999, 297.6], [2000, 298.5], [2001, 310.8], [2002, 304.0], [2003, 316.0], [2004, 317.9], [2005, 324.2], [2006, 320.9], [2007, 328.6], [2008, 331.6], [2009, 335.3], [2010, 344.9], [2011, 350.6], [2012, 345.0], [2013, 353.3], [2014, 357.0], [2015, 362.8], [2016, 369.7], [2017, 362.7], [2018, 366.6], [2019, 377.1], [2020, 373.3], [2021, 377.4], [2022, 379.6], [2023, 382.2]]}, "South Africa": {"iso3": "ZAF", "data": [[1990, 259.5], [1991, 269.3], [1992, 273.0], [1993, 278.8], [1994, 290.5], [1995, 296.6], [1996, 299.6], [1997, 308.3], [1998, 317.0], [1999, 321.0], [2000, 324.6], [2001, 330.6], [2002, 339.7], [2003, 338.3], [2004, 345.3], [2005, 352.0], [2006, 361.0], [2007, 365.1], [2008, 359.3], [2009, 365.8], [2010, 373.0], [2011, 384.7], [2012, 387.1], [2013, 387.7], [2014, 390.1], [2015, 404.0], [2016, 409.2], [2017, 418.1], [2018, 415.8], [2019, 420.5], [2020, 418.4], [2021, 422.4], [2022, 434.0], [2023, 436.9]]}, "Turkey": {"iso3": "TUR", "data": [[1990, 128.7], [1991, 160.5], [1992, 184.0], [1993, 197.5], [1994, 207.9], [1995, 222.5], [1996, 233.6], [1997, 240.4], [1998, 245.7], [1999, 252.0], [2000, 267.9], [2001, 272.9], [2002, 282.8], [2003, 293.4], [2004, 292.2], [2005, 304.1], [2006, 311.7], [2007, 316.7], [2008, 318.2], [2009, 327.9], [2010, 334.1], [2011, 344.9], [2012, 353.6], [2013, 352.2], [2014, 363.4], [2015, 363.3], [2016, 378.7], [2017, 382.5], [2018, 384.1], [2019, 388.1], [2020, 391.3], [2021, 396.7], [2022, 412.4], [2023, 408.4]]}, "France": {"iso3": "FRA", "data": [[1990, 360.2], [1991, 365.8], [1992, 359.6], [1993, 356.2], [1994, 352.5], [1995, 347.4], [1996, 347.9], [1997, 351.3], [1998, 347.3], [1999, 347.0], [2000, 337.1], [2001, 339.5], [2002, 342.2], [2003, 333.3], [2004, 334.3], [2005, 324.2], [2006, 332.9], [2007, 325.6], [2008, 318.2], [2009, 314.6], [2010, 317.0], [2011, 314.4], [2012, 306.0], [2013, 314.4], [2014, 310.6], [2015, 302.4], [2016, 295.5], [2017, 301.2], [2018, 294.4], [2019, 294.1], [2020, 288.8], [2021, 283.2], [2022, 286.7], [2023, 285.4]]}, "Italy": {"iso3": "ITA", "data": [[1990, 395.9], [1991, 399.5], [1992, 395.1], [1993, 401.6], [1994, 392.8], [1995, 396.3], [1996, 393.6], [1997, 381.9], [1998, 387.2], [1999, 378.7], [2000, 383.8], [2001, 374.5], [2002, 376.2], [2003, 365.3], [2004, 362.5], [2005, 363.6], [2006, 366.4], [2007, 355.9], [2008, 347.9], [2009, 350.1], [2010, 344.1], [2011, 343.6], [2012, 340.1], [2013, 335.5], [2014, 330.3], [2015, 325.0], [2016, 328.2], [2017, 323.0], [2018, 315.0], [2019, 318.3], [2020, 305.5], [2021, 310.5], [2022, 306.2], [2023, 303.7]]}, "Poland": {"iso3": "POL", "data": [[1990, 348.4], [1991, 351.0], [1992, 351.7], [1993, 352.2], [1994, 343.8], [1995, 335.7], [1996, 340.2], [1997, 339.5], [1998, 341.3], [1999, 339.3], [2000, 331.5], [2001, 330.6], [2002, 327.6], [2003, 328.9], [2004, 322.7], [2005, 323.7], [2006, 315.1], [2007, 317.0], [2008, 321.1], [2009, 310.9], [2010, 313.0], [2011, 310.2], [2012, 310.4], [2013, 308.1], [2014, 305.8], [2015, 297.7], [2016, 294.6], [2017, 297.0], [2018, 295.1], [2019, 294.0], [2020, 281.9], [2021, 279.9], [2022, 283.9], [2023, 284.7]]}}, "co2_latest": {"China": 12539.0, "United States": 4804.4, "India": 2854.4, "Russia": 1930.3, "Japan": 993.1, "Germany": 635.2, "Iran": 785.4, "South Korea": 625.4, "Saudi Arabia": 607.1, "Indonesia": 707.1, "Canada": 554.7, "Brazil": 476.2, "United Kingdom": 323.1, "Mexico": 424.6, "Australia": 382.2, "South Africa": 436.9, "Turkey": 408.4, "France": 285.4, "Italy": 303.7, "Poland": 284.7}};
+// ---------- Palette ----------
+const COLORS = {
+  ink:'#E8EDE9', inkDim:'#9FB3B8', coral:'#FF6B4A', teal:'#4ECDC4', amber:'#F4C95D',
+  panel:'#11293A', line:'rgba(232,237,233,0.10)'
+};
+const PLOTLY_FONT = {family:'Inter, sans-serif', color: COLORS.inkDim, size:11};
+
+const baseLayout = {
+  paper_bgcolor:'transparent',
+  plot_bgcolor:'transparent',
+  font: PLOTLY_FONT,
+  margin:{l:48,r:16,t:8,b:36},
+  xaxis:{gridcolor: COLORS.line, zerolinecolor: COLORS.line, tickfont:{size:10}},
+  yaxis:{gridcolor: COLORS.line, zerolinecolor: COLORS.line, tickfont:{size:10}},
+  showlegend:false,
+  hoverlabel:{bgcolor:'#11293A', bordercolor:COLORS.line, font:{color:COLORS.ink, family:'JetBrains Mono, monospace', size:11}}
+};
+const PCONFIG = {displayModeBar:false, responsive:true};
+
+// ---------- Warming stripes ----------
+function drawStripes(){
+  const canvas = document.getElementById('stripes');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = 64;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const temp = CLIMATE_DATA.temp;
+  const vals = temp.map(t=>t[1]);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const n = temp.length;
+  const bw = w/n;
+  function lerpColor(t){
+    // t in [0,1]: blue -> near-white -> red
+    const cold = [27,79,114], hot=[192,57,43], mid=[232,237,233];
+    let c1,c2,f;
+    if(t<0.5){c1=cold;c2=mid;f=t/0.5;} else {c1=mid;c2=hot;f=(t-0.5)/0.5;}
+    const r = Math.round(c1[0]+(c2[0]-c1[0])*f);
+    const g = Math.round(c1[1]+(c2[1]-c1[1])*f);
+    const b = Math.round(c1[2]+(c2[2]-c1[2])*f);
+    return `rgb(${r},${g},${b})`;
+  }
+  for(let i=0;i<n;i++){
+    const t = (vals[i]-min)/(max-min);
+    ctx.fillStyle = lerpColor(t);
+    ctx.fillRect(i*bw,0,bw+1,h);
+  }
+}
+window.addEventListener('resize', drawStripes);
+
+// ---------- KPIs ----------
+function setKPIs(){
+  const temp = CLIMATE_DATA.temp;
+  document.getElementById('kpiTemp').textContent = '+' + temp[temp.length-1][1].toFixed(2) + '°C';
+
+  const totalCO2 = Object.values(CLIMATE_DATA.co2_latest).reduce((a,b)=>a+b,0);
+  document.getElementById('kpiCO2').textContent = (totalCO2/1000).toFixed(1) + ' Gt';
+
+  const sea = CLIMATE_DATA.sea;
+  document.getElementById('kpiSea').textContent = '+' + sea[sea.length-1][1].toFixed(0) + ' mm';
+
+  // fastest warming decade: compare decade means
+  const decades = {};
+  temp.forEach(([y,v])=>{
+    const d = Math.floor(y/10)*10;
+    decades[d] = decades[d] || [];
+    decades[d].push(v);
+  });
+  let best=null, bestDelta=-Infinity;
+  const keys = Object.keys(decades).map(Number).sort((a,b)=>a-b);
+  for(let i=1;i<keys.length;i++){
+    const prevMean = decades[keys[i-1]].reduce((a,b)=>a+b,0)/decades[keys[i-1]].length;
+    const curMean = decades[keys[i]].reduce((a,b)=>a+b,0)/decades[keys[i]].length;
+    const delta = curMean - prevMean;
+    if(delta>bestDelta){bestDelta=delta; best=keys[i];}
+  }
+  document.getElementById('kpiDecade').textContent = best + 's';
+}
+
+// ---------- Country select ----------
+function populateCountrySelect(){
+  const sel = document.getElementById('countrySelect');
+  const names = Object.keys(CLIMATE_DATA.co2_series).sort((a,b)=> CLIMATE_DATA.co2_latest[b]-CLIMATE_DATA.co2_latest[a]);
+  names.forEach(n=>{
+    const opt = document.createElement('option');
+    opt.value = n; opt.textContent = n;
+    sel.appendChild(opt);
+  });
+  sel.value = 'India';
+}
+
+// ---------- Temp chart ----------
+function renderTempChart(){
+  const temp = CLIMATE_DATA.temp;
+  const xs = temp.map(t=>t[0]);
+  const ys = temp.map(t=>t[1]);
+  const trace = {
+    x:xs, y:ys, type:'scatter', mode:'lines', line:{color:COLORS.coral, width:2},
+    fill:'tozeroy', fillcolor:'rgba(255,107,74,0.08)',
+    hovertemplate:'%{x}: %{y:.2f}°C<extra></extra>'
+  };
+  const zeroLine = {x:[xs[0],xs[xs.length-1]], y:[0,0], type:'scatter', mode:'lines', line:{color:COLORS.inkDim, width:1, dash:'dot'}, hoverinfo:'skip'};
+  Plotly.newPlot('tempChart', [zeroLine, trace], {...baseLayout, yaxis:{...baseLayout.yaxis, title:{text:'°C anomaly', font:{size:10,color:COLORS.inkDim}}}}, PCONFIG);
+}
+
+// ---------- Sea chart ----------
+function renderSeaChart(){
+  const sea = CLIMATE_DATA.sea;
+  const xs = sea.map(s=>s[0]);
+  const ys = sea.map(s=>s[1]);
+  const trace = {
+    x:xs, y:ys, type:'scatter', mode:'lines', line:{color:COLORS.amber, width:2},
+    fill:'tozeroy', fillcolor:'rgba(244,201,93,0.10)',
+    hovertemplate:'%{x}: +%{y:.1f} mm<extra></extra>'
+  };
+  Plotly.newPlot('seaChart', [trace], {...baseLayout, yaxis:{...baseLayout.yaxis, title:{text:'mm', font:{size:10,color:COLORS.inkDim}}}}, PCONFIG);
+}
+
+// ---------- CO2 trend chart (selected country vs top 5) ----------
+function renderCO2Chart(selected, yearMin){
+  const top5 = Object.keys(CLIMATE_DATA.co2_series)
+    .sort((a,b)=> CLIMATE_DATA.co2_latest[b]-CLIMATE_DATA.co2_latest[a]).slice(0,5);
+  const palette = [COLORS.teal, '#6E8894', '#8AA6AE', '#4F7580', '#3A5B64'];
+  const traces = [];
+  top5.forEach((name,i)=>{
+    if(name===selected) return;
+    const pts = CLIMATE_DATA.co2_series[name].data.filter(p=>p[0]>=yearMin);
+    traces.push({
+      x:pts.map(p=>p[0]), y:pts.map(p=>p[1]), name:name, type:'scatter', mode:'lines',
+      line:{color:palette[i], width:1.5}, opacity:0.55,
+      hovertemplate:name+' — %{x}: %{y:.0f} Mt<extra></extra>'
+    });
+  });
+  const selPts = CLIMATE_DATA.co2_series[selected].data.filter(p=>p[0]>=yearMin);
+  traces.push({
+    x:selPts.map(p=>p[0]), y:selPts.map(p=>p[1]), name:selected, type:'scatter', mode:'lines',
+    line:{color:COLORS.coral, width:3},
+    hovertemplate:selected+' — %{x}: %{y:.0f} Mt<extra></extra>'
+  });
+  Plotly.newPlot('co2Chart', traces, {...baseLayout, showlegend:true, legend:{orientation:'h', y:-0.25, font:{size:9,color:COLORS.inkDim}}, yaxis:{...baseLayout.yaxis, title:{text:'Mt CO₂', font:{size:10,color:COLORS.inkDim}}}}, PCONFIG);
+}
+
+// ---------- Ranking bar chart ----------
+function renderRankChart(selected){
+  const entries = Object.entries(CLIMATE_DATA.co2_latest).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const names = entries.map(e=>e[0]).reverse();
+  const vals = entries.map(e=>e[1]).reverse();
+  const colors = names.map(n=> n===selected ? COLORS.coral : COLORS.teal);
+  const trace = {
+    x:vals, y:names, type:'bar', orientation:'h',
+    marker:{color:colors, opacity:0.9},
+    hovertemplate:'%{y}: %{x:.0f} Mt<extra></extra>'
+  };
+  Plotly.newPlot('rankChart', [trace], {...baseLayout, margin:{l:110,r:16,t:8,b:36}, yaxis:{...baseLayout.yaxis, tickfont:{size:10}}, xaxis:{...baseLayout.xaxis, title:{text:'Mt CO₂, 2023', font:{size:10,color:COLORS.inkDim}}}}, PCONFIG);
+}
+
+// ---------- Choropleth map ----------
+function renderMap(metric){
+  const names = Object.keys(CLIMATE_DATA.co2_series);
+  const iso = names.map(n=>CLIMATE_DATA.co2_series[n].iso3);
+  let z, colorbarTitle, colorscale;
+  if(metric==='total'){
+    z = names.map(n=>CLIMATE_DATA.co2_latest[n]);
+    colorbarTitle = 'Mt CO₂';
+    colorscale = [[0,'#0E2230'],[0.3,'#123A4A'],[0.6,'#4ECDC4'],[1,'#FF6B4A']];
+  } else {
+    z = names.map(n=>{
+      const d = CLIMATE_DATA.co2_series[n].data;
+      const first = d[0][1], last = d[d.length-1][1];
+      return ((last-first)/first*100);
+    });
+    colorbarTitle = '% change';
+    colorscale = [[0,'#4ECDC4'],[0.5,'#123A4A'],[1,'#FF6B4A']];
+  }
+  const trace = {
+    type:'choropleth', locations:iso, locationmode:'ISO-3', z:z, text:names,
+    colorscale:colorscale, colorbar:{title:{text:colorbarTitle, font:{size:10,color:COLORS.inkDim}}, tickfont:{size:9,color:COLORS.inkDim}, outlinewidth:0},
+    marker:{line:{color:'#0B1D26', width:0.6}},
+    hovertemplate:'%{text}: %{z:.0f}<extra></extra>'
+  };
+  const layout = {
+    ...baseLayout,
+    geo:{
+      bgcolor:'transparent', showframe:false, showcoastlines:false,
+      projection:{type:'natural earth'}, landcolor:'#16303F', showland:true,
+      showocean:true, oceancolor:'#0B1D26', showlakes:false
+    },
+    margin:{l:0,r:0,t:0,b:0}
+  };
+  Plotly.newPlot('mapChart', [trace], layout, PCONFIG);
+}
+
+// ---------- Wire up ----------
+function refreshAll(){
+  const selected = document.getElementById('countrySelect').value;
+  const yearMin = parseInt(document.getElementById('yearRange').value,10);
+  document.getElementById('yearRangeLabel').textContent = yearMin + ' – 2023';
+  renderCO2Chart(selected, yearMin);
+  renderRankChart(selected);
+}
+
+drawStripes();
+setKPIs();
+populateCountrySelect();
+renderTempChart();
+renderSeaChart();
+refreshAll();
+renderMap('total');
+
+document.getElementById('countrySelect').addEventListener('change', refreshAll);
+document.getElementById('yearRange').addEventListener('input', refreshAll);
+document.getElementById('mapMetric').addEventListener('change', (e)=>renderMap(e.target.value));
+</script>
+</body>
+</html>
